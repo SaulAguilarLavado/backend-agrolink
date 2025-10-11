@@ -26,7 +26,7 @@ public class Usuario {
     private String direccion;
     private String telefono;
 
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "usuarios_roles",
             joinColumns = @JoinColumn(name = "usuario_id", referencedColumnName = "id"),
