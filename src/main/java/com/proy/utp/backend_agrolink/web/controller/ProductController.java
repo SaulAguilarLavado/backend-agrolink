@@ -5,6 +5,7 @@ import com.proy.utp.backend_agrolink.domain.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,8 +30,14 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<Product> save(@RequestBody Product product) {
-        return new ResponseEntity<>(productService.save(product), HttpStatus.CREATED);
+    public ResponseEntity<Product> save(@RequestBody Product product, Authentication authentication) {
+        // 1. Obtenemos el email del usuario que está autenticado (viene del token JWT)
+        String farmerEmail = authentication.getName();
+
+        // 2. Llamamos a un nuevo método en el servicio para guardar el producto asociándolo al agricultor
+        Product savedProduct = productService.saveForFarmer(product, farmerEmail);
+
+        return new ResponseEntity<>(savedProduct, HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")

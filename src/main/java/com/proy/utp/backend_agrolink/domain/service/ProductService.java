@@ -1,34 +1,23 @@
 package com.proy.utp.backend_agrolink.domain.service;
 
 import com.proy.utp.backend_agrolink.domain.Product;
+import com.proy.utp.backend_agrolink.domain.User;
 import com.proy.utp.backend_agrolink.domain.repository.ProductRepository;
-import com.proy.utp.backend_agrolink.persistance.crud.ProductoCrudRepository;
-import com.proy.utp.backend_agrolink.persistance.crud.UsuarioCrudRepository; // <-- 1. IMPORTAMOS EL CRUD REPOSITORY
-import com.proy.utp.backend_agrolink.persistance.entity.Usuario; // <-- 2. IMPORTAMOS LA ENTIDAD
-import com.proy.utp.backend_agrolink.persistance.mapper.ProductMapper;
+import com.proy.utp.backend_agrolink.domain.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import com.proy.utp.backend_agrolink.persistance.entity.Producto; // <-- 2. IMPORTAMOS LA ENTIDAD
-
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class ProductService {
 
+    // Un servicio del dominio solo debe depender de repositorios del dominio.
     @Autowired
     private ProductRepository productRepository;
 
     @Autowired
-    private UsuarioCrudRepository usuarioCrudRepository; // <-- 3. INYECTAMOS EL CRUD REPOSITORY
-
-    @Autowired
-    private ProductMapper productMapper; // <-- 4. INYECTAMOS EL MAPPER
-    @Autowired
-    private ProductoCrudRepository productoCrudRepository;
+    private UserRepository userRepository;
 
     public List<Product> getAll() {
         return productRepository.getAll();
@@ -42,29 +31,19 @@ public class ProductService {
      * Guarda un nuevo producto, asignando automáticamente
      * al agricultor que está actualmente logueado.
      */
-    public Product save(Product product) {
-        // 1. Obtener el email del usuario logueado
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userEmail = authentication.getName();
+    public Product saveForFarmer(Product product, String farmerEmail) {
+        User farmer = userRepository.findByEmail(farmerEmail)
+                .orElseThrow(() -> new RuntimeException("Agricultor no encontrado con email: " + farmerEmail));
 
-        // 2. Buscar la ENTIDAD 'Usuario' del agricultor
-        Usuario farmerEntity = usuarioCrudRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("Usuario agricultor no encontrado"));
+        product.setFarmer(farmer);
 
-        // 3. Convertir el 'Product' del dominio a una entidad 'Producto'
-        Producto productoEntity = productMapper.toProducto(product);
-
-        // 4. Asignar el agricultor a la entidad del producto
-        productoEntity.setAgricultor(farmerEntity);
-
-        // 5. Guardar la entidad 'Producto' usando el CRUD REPOSITORY DIRECTAMENTE
-        Producto savedProductoEntity = productoCrudRepository.save(productoEntity);
-
-        // 6. Convertir la entidad guardada de vuelta a un 'Product' de dominio para devolverla
-        return productMapper.toProduct(savedProductoEntity);
+        return productRepository.save(product);
     }
 
-    @PreAuthorize("hasRole('ADMINISTRADOR') or @productRepository.findById(#productId).get().getFarmer().getEmail() == authentication.name")
+    /**
+     * Borra un producto si existe.
+     * La lógica de permisos (si el usuario puede borrarlo) ya está en SecurityConfig.
+     */
     public boolean delete(long productId) {
         return getProduct(productId).map(product -> {
             productRepository.deleteById(productId);

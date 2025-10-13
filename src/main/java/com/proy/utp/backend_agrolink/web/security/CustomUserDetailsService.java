@@ -25,9 +25,13 @@ public class CustomUserDetailsService implements UserDetailsService {
         Usuario usuario = usuarioCrudRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con el email: " + email));
 
+        // --- HAZ ESTE CAMBIO ---
+        // Convertimos el nombre del rol a mayúsculas antes de añadir el prefijo.
         Set<GrantedAuthority> authorities = usuario.getRoles().stream()
-                .map(rol -> new SimpleGrantedAuthority(rol.getNombre()))
+                .map(rol -> new SimpleGrantedAuthority("ROLE_" + rol.getNombre().toUpperCase()))
                 .collect(Collectors.toSet());
+        // -----------------------
+
         System.out.println("Usuario '" + email + "' tiene las siguientes autoridades: " + authorities);
 
         return new User(usuario.getEmail(), usuario.getPassword(), authorities);

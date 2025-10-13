@@ -3,7 +3,7 @@ package com.proy.utp.backend_agrolink.domain;
 import java.math.BigDecimal;
 
 public class Product {
-    private long productId;
+    private Long productId;
     private String name;
     private String description;
     private BigDecimal pricePerUnit;
@@ -12,11 +12,11 @@ public class Product {
     private User farmer; // Para saber quién es el dueño
     private Long harvestId; // Opcional, puede ser nulo
 
-    public long getProductId() {
+    public Long getProductId() {
         return productId;
     }
 
-    public void setProductId(long productId) {
+    public void setProductId(Long productId) {
         this.productId = productId;
     }
 

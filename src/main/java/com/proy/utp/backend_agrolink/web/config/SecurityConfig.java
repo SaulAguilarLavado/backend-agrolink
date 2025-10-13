@@ -37,16 +37,15 @@ public class SecurityConfig {
 
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Rutas públicas de autenticación
                         .requestMatchers("/auth/**").permitAll()
 
-                        // --- 2. AÑADIR NUEVAS REGLAS PARA PRODUCTOS ---
-                        .requestMatchers(HttpMethod.GET, "/productos/**").hasAnyAuthority("agricultor", "comprador","administrador")
-                        .requestMatchers(HttpMethod.POST, "/productos").hasAuthority("agricultor")
-                        .requestMatchers(HttpMethod.PUT, "/productos/**").hasAuthority("agricultor")
-                        .requestMatchers(HttpMethod.DELETE, "/productos/**").hasAnyAuthority("agricultor", "administrador")
+                        // --- REEMPLAZA ESTAS REGLAS ---
+                        .requestMatchers(HttpMethod.GET, "/productos/**").hasAnyRole("AGRICULTOR", "COMPRADOR", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/productos").hasRole("AGRICULTOR")
+                        .requestMatchers(HttpMethod.PUT, "/productos/**").hasRole("AGRICULTOR")
+                        .requestMatchers(HttpMethod.DELETE, "/productos/**").hasAnyRole("AGRICULTOR", "ADMINISTRADOR")
+                        // -----------------------------
 
-                        // Cualquier otra petición debe estar autenticada
                         .anyRequest().authenticated()
                 );
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
