@@ -28,6 +28,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         Set<GrantedAuthority> authorities = usuario.getRoles().stream()
                 .map(rol -> new SimpleGrantedAuthority(rol.getNombre()))
                 .collect(Collectors.toSet());
+        System.out.println("Usuario '" + email + "' tiene las siguientes autoridades: " + authorities);
 
         return new User(usuario.getEmail(), usuario.getPassword(), authorities);
     }
