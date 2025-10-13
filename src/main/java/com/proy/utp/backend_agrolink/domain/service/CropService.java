@@ -1,7 +1,9 @@
 package com.proy.utp.backend_agrolink.domain.service;
 
-import com.proy.utp.backend_agrolink.domain.dto.CropDTO;
+import com.proy.utp.backend_agrolink.domain.Crop;
+import com.proy.utp.backend_agrolink.domain.User;
 import com.proy.utp.backend_agrolink.domain.repository.CropRepository;
+import com.proy.utp.backend_agrolink.domain.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,27 +14,39 @@ import java.util.Optional;
 public class CropService {
 
     @Autowired
-    CropRepository cropRepository;
+    private CropRepository cropRepository;
 
-    public List<CropDTO> getAll() {
+    @Autowired
+    private UserRepository userRepository;
+
+    public List<Crop> getAll() {
         return cropRepository.getAll();
     }
 
-    public Optional<CropDTO> getCrop(Long id){
-        return  cropRepository.getCrop(id);
+    public Optional<Crop> findById(Long id) {
+        // Correcto: Llama a findById en el repositorio
+        return cropRepository.findById(id);
     }
 
-    public List<CropDTO> getByFarmer(Long farmerId){
-        return cropRepository.getByFarmer(farmerId);
+    public List<Crop> findByAuthenticatedFarmer(String farmerEmail) {
+        User farmer = userRepository.findByEmail(farmerEmail)
+                .orElseThrow(() -> new RuntimeException("Agricultor no encontrado"));
+        // Correcto: Llama a findByFarmerId en el repositorio
+        return cropRepository.findByFarmerId(farmer.getUserId());
     }
 
-    public CropDTO save(CropDTO crop){
+    public Crop saveForAuthenticatedFarmer(Crop crop, String farmerEmail) {
+        User farmer = userRepository.findByEmail(farmerEmail)
+                .orElseThrow(() -> new RuntimeException("Agricultor no encontrado"));
+        crop.setFarmer(farmer);
+        // Correcto: Llama a save en el repositorio
         return cropRepository.save(crop);
     }
 
-    public boolean delete(Long id){
-        return getCrop(id).map(cropDTO -> {
-            cropRepository.delete(id);
+    public boolean delete(Long id) {
+        return findById(id).map(crop -> {
+            // Correcto: Llama a deleteById en el repositorio
+            cropRepository.deleteById(id);
             return true;
         }).orElse(false);
     }

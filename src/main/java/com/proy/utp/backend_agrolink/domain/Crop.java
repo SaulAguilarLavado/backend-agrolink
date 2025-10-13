@@ -1,62 +1,63 @@
-package com.proy.utp.backend_agrolink.domain.dto;
+package com.proy.utp.backend_agrolink.domain;
 
 import java.time.LocalDate;
 
-public class CropDTO {
+public class Crop {
     private Long id;
     private String name;
     private String description;
     private LocalDate plantingDate;
     private Double cultivatedArea;
-    private Long farmerId;
+    private User farmer; // <-- ¡CORREGIDO! Ahora es el objeto User completo
 
-    // Getters
+    // --- GETTERS Y SETTERS CORREGIDOS ---
+
     public Long getId() {
         return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getName() {
         return name;
     }
 
-    public String getDescription() {
-        return description;
-    }
-
-    public LocalDate getPlantingDate() {
-        return plantingDate;
-    }
-
-    public Double getCultivatedArea() {
-        return cultivatedArea;
-    }
-
-    public Long getFarmerId() {
-        return farmerId;
-    }
-
-    //Setters
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public void setDescription(String description) {
         this.description = description;
     }
 
+    public LocalDate getPlantingDate() {
+        return plantingDate;
+    }
+
     public void setPlantingDate(LocalDate plantingDate) {
         this.plantingDate = plantingDate;
+    }
+
+    public Double getCultivatedArea() {
+        return cultivatedArea;
     }
 
     public void setCultivatedArea(Double cultivatedArea) {
         this.cultivatedArea = cultivatedArea;
     }
 
-    public void setFarmerId(Long farmerId) {
-        this.farmerId = farmerId;
+    // Corregido para trabajar con el objeto User
+    public User getFarmer() {
+        return farmer;
+    }
+
+    public void setFarmer(User farmer) {
+        this.farmer = farmer;
     }
 }

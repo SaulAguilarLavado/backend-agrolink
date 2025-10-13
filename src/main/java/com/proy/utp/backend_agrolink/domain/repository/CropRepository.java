@@ -1,14 +1,14 @@
 package com.proy.utp.backend_agrolink.domain.repository;
 
-import com.proy.utp.backend_agrolink.domain.dto.CropDTO;
+import com.proy.utp.backend_agrolink.domain.Crop;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface CropRepository {
-    List<CropDTO> getAll();
-    Optional<CropDTO> getCrop(Long id);
-    List<CropDTO> getByFarmer(Long farmerId);
-    CropDTO save(CropDTO crop);
-    void delete(Long id);
+    List<Crop> getAll();
+    Optional<Crop> findById(Long id); // <-- Nombre estándar
+    List<Crop> findByFarmerId(Long farmerId); // <-- Nombre estándar
+    Crop save(Crop crop);
+    void deleteById(Long id); // <-- Nombre estándar
 }

@@ -1,12 +1,14 @@
 package com.proy.utp.backend_agrolink.web.controller;
 
-import com.proy.utp.backend_agrolink.domain.dto.CropDTO;
+import com.proy.utp.backend_agrolink.domain.Crop;
 import com.proy.utp.backend_agrolink.domain.service.CropService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/cultivos")
@@ -15,35 +17,36 @@ public class CropController {
     @Autowired
     private CropService cropService;
 
-    // Obtener todos los cultivos
-    @GetMapping("/all")
-    public List<CropDTO> getAll() {
-        return cropService.getAll();
+    // Endpoint seguro para que un agricultor vea SUS PROPIOS cultivos
+    @GetMapping("/my-crops")
+    public ResponseEntity<List<Crop>> getMyCrops(Authentication authentication) {
+        String farmerEmail = authentication.getName();
+        return new ResponseEntity<>(cropService.findByAuthenticatedFarmer(farmerEmail), HttpStatus.OK);
     }
 
     // Obtener un cultivo por su ID
     @GetMapping("/{id}")
-    public CropDTO getCrop(@PathVariable Long id) {
-        Optional<CropDTO> crop = cropService.getCrop(id);
-        return crop.orElse(null); // Devuelve null si no existe (Spring lo maneja como 200 con cuerpo vacío)
+    public ResponseEntity<Crop> getCrop(@PathVariable Long id) {
+        return cropService.findById(id)
+                .map(crop -> new ResponseEntity<>(crop, HttpStatus.OK))
+                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    // Obtener cultivos por agricultor
-    @GetMapping("/agricultor/{idAgricultor}")
-    public List<CropDTO> getByFarmer(@PathVariable("idAgricultor") Long idAgricultor) {
-        return cropService.getByFarmer(idAgricultor);
-    }
-
-    // Guardar un nuevo cultivo
-    @PostMapping("/save")
-    public CropDTO save(@RequestBody CropDTO crop) {
-        return cropService.save(crop);
+    // Guardar un nuevo cultivo. El agricultor se asigna desde el token.
+    @PostMapping
+    public ResponseEntity<Crop> save(@RequestBody Crop crop, Authentication authentication) {
+        String farmerEmail = authentication.getName();
+        Crop savedCrop = cropService.saveForAuthenticatedFarmer(crop, farmerEmail);
+        return new ResponseEntity<>(savedCrop, HttpStatus.CREATED);
     }
 
     // Eliminar un cultivo
-    @DeleteMapping("/delete/{id}")
-    public void delete(@PathVariable Long id) {
-        cropService.delete(id);
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        if (cropService.delete(id)) {
+            return new ResponseEntity<>(HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 }
-
