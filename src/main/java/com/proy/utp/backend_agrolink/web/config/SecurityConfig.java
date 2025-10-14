@@ -39,6 +39,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
 
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // --- REEMPLAZA ESTAS REGLAS ---
                         .requestMatchers(HttpMethod.GET, "/productos/**").hasAnyRole("AGRICULTOR", "COMPRADOR", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/productos").hasRole("AGRICULTOR")
