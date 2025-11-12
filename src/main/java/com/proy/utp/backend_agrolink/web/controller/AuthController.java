@@ -30,14 +30,12 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         try {
-            String token = authService.login(loginRequest);
-            AuthResponse authResponse = new AuthResponse(token);
-
+            AuthResponse authResponse = authService.login(loginRequest);
             return ResponseEntity.ok(authResponse);
         } catch (Exception e) {
-            return new ResponseEntity("Email o contraseña inválidos", HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity<>("Email o contraseña inválidos", HttpStatus.UNAUTHORIZED);
         }
     }
 }

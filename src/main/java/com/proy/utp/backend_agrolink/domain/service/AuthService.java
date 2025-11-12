@@ -2,6 +2,7 @@ package com.proy.utp.backend_agrolink.domain.service;
 
 import com.proy.utp.backend_agrolink.domain.Role;
 import com.proy.utp.backend_agrolink.domain.User;
+import com.proy.utp.backend_agrolink.domain.dto.AuthResponse;
 import com.proy.utp.backend_agrolink.domain.dto.LoginRequest;
 import com.proy.utp.backend_agrolink.domain.dto.RegisterRequest;
 import com.proy.utp.backend_agrolink.domain.repository.RoleRepository;
@@ -16,7 +17,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class AuthService {
@@ -62,7 +65,7 @@ public class AuthService {
     }
 
 
-    public String login(LoginRequest loginRequest) {
+    public AuthResponse login(LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getEmail(),
@@ -72,6 +75,21 @@ public class AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String token = jwtTokenProvider.generateToken(authentication);
-        return token;
+
+        User user = userRepository.findByEmail(loginRequest.getEmail())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        List<String> roles = user.getRoles().stream()
+                .map(role -> role.getRoleName())
+                .toList();
+
+        return new AuthResponse(
+                token,
+                user.getEmail(),
+                user.getName(),
+                user.getLastname(),
+                roles
+        );
     }
+
 }
