@@ -23,6 +23,12 @@ public class Cultivo {
     @Column(name = "area_cultivada")
     private Double areaCultivada;
 
+    @Column(length = 50)
+    private String estado;
+
+    @Column(name = "fecha_cosecha")
+    private LocalDate fechaCosecha;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agricultor_id", nullable = false)
     private Usuario agricultor;
@@ -75,5 +81,17 @@ public class Cultivo {
 
     public void setAgricultor(Usuario agricultor) {
         this.agricultor = agricultor;
+    }
+
+    public String getEstado() {return estado;
+    }
+
+    public void setEstado(String estado) {this.estado = estado;
+    }
+
+    public LocalDate getFechaCosecha() {return fechaCosecha;
+    }
+
+    public void setFechaCosecha(LocalDate fechaCosecha) {this.fechaCosecha = fechaCosecha;
     }
 }

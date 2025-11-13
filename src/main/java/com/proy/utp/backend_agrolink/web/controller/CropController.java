@@ -49,4 +49,17 @@ public class CropController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
+    @PutMapping("/{id}/estado")
+    public ResponseEntity<Crop> updateCropStatus(
+            @PathVariable Long id,
+            @RequestParam String estado,
+            Authentication authentication) {
+
+        String emailAgricultor = authentication.getName();
+
+        return cropService.updateStatus(id, estado, emailAgricultor)
+                .map(crop -> new ResponseEntity<>(crop, HttpStatus.OK))
+                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
 }
