@@ -45,6 +45,7 @@ public class CropController {
 
     // Eliminar un cultivo
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('AGRICULTOR')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         if (cropService.delete(id)) {
             return new ResponseEntity<>(HttpStatus.OK);
@@ -53,6 +54,7 @@ public class CropController {
         }
     }
     @PutMapping("/{id}/estado")
+    @PreAuthorize("hasRole('AGRICULTOR')")
     public ResponseEntity<Crop> updateCropStatus(
             @PathVariable Long id,
             @RequestParam String estado,
