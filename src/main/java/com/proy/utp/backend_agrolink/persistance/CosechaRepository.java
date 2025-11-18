@@ -45,4 +45,15 @@ public class CosechaRepository implements HarvestRepository {
     public List<Harvest> findByCropId(Long cropId) {
         return mapper.toHarvests(cosechaCrudRepository.findByCultivoId(cropId));
     }
+
+    @Override
+    public List<Harvest> findByFarmerId(Long farmerId) {
+        // Usamos el método definido en CosechaCrudRepository que recorre la relación cultivo.agricultor.id
+        return mapper.toHarvests(cosechaCrudRepository.findByCultivoAgricultorIdOrderByFechaCosechaDesc(farmerId));
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        cosechaCrudRepository.deleteById(id);
+    }
 }
