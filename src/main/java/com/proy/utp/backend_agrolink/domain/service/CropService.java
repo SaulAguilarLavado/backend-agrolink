@@ -40,6 +40,7 @@ public class CropService {
         User farmer = userRepository.findByEmail(farmerEmail)
                 .orElseThrow(() -> new RuntimeException("Agricultor no encontrado"));
         crop.setFarmer(farmer);
+        crop.setStatus("Activo");
         // Correcto: Llama a save en el repositorio
         return cropRepository.save(crop);
     }
