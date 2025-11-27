@@ -9,6 +9,8 @@ public class Crop {
     private LocalDate plantingDate;
     private Double cultivatedArea;
     private User farmer; // <-- ¡CORREGIDO! Ahora es el objeto User completo
+    private String status;
+    private LocalDate harvestDate;
 
     // --- GETTERS Y SETTERS CORREGIDOS ---
 
@@ -59,5 +61,18 @@ public class Crop {
 
     public void setFarmer(User farmer) {
         this.farmer = farmer;
+    }
+
+
+    public LocalDate getHarvestDate() {return harvestDate;
+    }
+
+    public void setHarvestDate(LocalDate harvestDate) {this.harvestDate = harvestDate;
+    }
+
+    public String getStatus() {return status;
+    }
+
+    public void setStatus(String status) {this.status = status;
     }
 }
