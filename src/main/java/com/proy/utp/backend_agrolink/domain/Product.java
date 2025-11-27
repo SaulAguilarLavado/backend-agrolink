@@ -1,6 +1,7 @@
 package com.proy.utp.backend_agrolink.domain;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 public class Product {
     private Long productId;
@@ -11,6 +12,8 @@ public class Product {
     private double availableStock;
     private User farmer; // Para saber quién es el dueño
     private Long harvestId; // Opcional, puede ser nulo
+    private String state;
+    private LocalDate publishDate;
 
     public Long getProductId() {
         return productId;
@@ -74,5 +77,21 @@ public class Product {
 
     public void setHarvestId(Long harvestId) {
         this.harvestId = harvestId;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public LocalDate getPublishDate() {
+        return publishDate;
+    }
+
+    public void setPublishDate(LocalDate publishDate) {
+        this.publishDate = publishDate;
     }
 }

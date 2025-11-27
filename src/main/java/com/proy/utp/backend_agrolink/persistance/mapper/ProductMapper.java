@@ -20,7 +20,9 @@ public interface ProductMapper {
             @Mapping(source = "unidadMedida", target = "unitOfMeasure"),
             @Mapping(source = "stockDisponible", target = "availableStock"),
             @Mapping(source = "agricultor", target = "farmer"),
-            @Mapping(source = "cosecha.id", target = "harvestId") // Mapeamos solo el ID de la cosecha
+            @Mapping(source = "cosecha.id", target = "harvestId"),
+            @Mapping(source = "estado", target = "state"),
+            @Mapping(source = "fechaPublicacion", target = "publishDate")// Mapeamos solo el ID de la cosecha
     })
     Product toProduct(Producto producto);
 
