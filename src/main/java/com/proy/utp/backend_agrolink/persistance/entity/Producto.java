@@ -2,6 +2,7 @@ package com.proy.utp.backend_agrolink.persistance.entity;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "productos")
@@ -33,6 +34,12 @@ public class Producto {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cosecha_id")
     private Cosecha cosecha;
+
+    @Column(name="estado", nullable=false, length=20)
+    private String estado;
+
+    @Column(name="fecha_publicacion")
+    private LocalDate fechaPublicacion;
 
     // Getters y Setters
 
@@ -98,5 +105,17 @@ public class Producto {
 
     public void setCosecha(Cosecha cosecha) {
         this.cosecha = cosecha;
+    }
+
+    public LocalDate getFechaPublicacion() { return fechaPublicacion;
+    }
+
+    public void setFechaPublicacion(LocalDate fechaPublicacion) {this.fechaPublicacion = fechaPublicacion;
+    }
+
+    public String getEstado() { return estado;
+    }
+
+    public void setEstado(String estado) { this.estado = estado;
     }
 }

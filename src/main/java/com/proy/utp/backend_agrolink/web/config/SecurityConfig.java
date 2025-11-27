@@ -33,7 +33,7 @@ public class SecurityConfig {
     //               AUTH BEANS
     // ============================================
     @Bean
-    public static PasswordEncoder passwordEncoder(){
+    public static PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
@@ -48,13 +48,26 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+
+        //  IMPORTANTE: PARA CORS CON CREDENTIALS
+        configuration.setAllowedOriginPatterns(List.of("http://localhost:3000"));
+
+        //  Permitir métodos
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        // Permitir headers comunes del frontend
+        configuration.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "Origin",
+                "X-Requested-With"
+        ));
+
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/", configuration);
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 
@@ -67,10 +80,10 @@ public class SecurityConfig {
         // 1️ CORS
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
-        // 2️ CSRF
+        // 2️ CSRF deshabilitado
         http.csrf(csrf -> csrf.disable());
 
-        // 3️ REGLAS
+        // 3️ Reglas de autorización
         http.authorizeHttpRequests(auth -> auth
 
                 // ===========================

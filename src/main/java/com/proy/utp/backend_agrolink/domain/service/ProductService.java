@@ -8,6 +8,7 @@ import com.proy.utp.backend_agrolink.domain.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,9 +42,30 @@ public class ProductService {
     }
 
     public Product saveForFarmer(Product product, String farmerEmail) {
+
+        // 1. Buscar al agricultor dueño
         User farmer = userRepository.findByEmail(farmerEmail)
                 .orElseThrow(() -> new RuntimeException("Agricultor no encontrado con email: " + farmerEmail));
+
+        // 2. Asociar agricultor
         product.setFarmer(farmer);
+
+        // 3. Validaciones mínimas
+        if (product.getPricePerUnit() == null || product.getPricePerUnit().doubleValue() <= 0) {
+            throw new IllegalArgumentException("El precio por unidad debe ser mayor a 0");
+        }
+
+        if (product.getAvailableStock() <= 0) {
+            throw new IllegalArgumentException("El stock disponible debe ser mayor a 0");
+        }
+
+        // 4. Estado inicial del producto
+        product.setState("DISPONIBLE");   // en inglés porque tu dominio está en inglés
+
+        // 5. Fecha de publicación
+        product.setPublishDate(LocalDate.now());
+
+        // 6. Guardar
         return productRepository.save(product);
     }
 
