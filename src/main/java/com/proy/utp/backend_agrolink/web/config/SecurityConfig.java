@@ -29,6 +29,9 @@ public class SecurityConfig {
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    // ============================================
+    //               AUTH BEANS
+    // ============================================
     @Bean
     public static PasswordEncoder passwordEncoder(){
         return new BCryptPasswordEncoder();
@@ -39,51 +42,77 @@ public class SecurityConfig {
         return configuration.getAuthenticationManager();
     }
 
-    // Bean de CORS para permitir la conexión del frontend
+    // ============================================
+    //                 CORS CONFIG
+    // ============================================
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000")); // O la URL de tu frontend
+        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration("/", configuration);
         return source;
     }
 
+    // ============================================
+    //           SECURITY FILTER CHAIN
+    // ============================================
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-        // 1. Activamos la configuración de CORS
+        // 1️ CORS
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
-        // 2. Desactivamos CSRF
+        // 2️ CSRF
         http.csrf(csrf -> csrf.disable());
 
-        // 3. Definimos las reglas de autorización de forma ordenada
+        // 3️ REGLAS
         http.authorizeHttpRequests(auth -> auth
-                // --- REGLAS PÚBLICAS (sin autenticación) ---
+
+                // ===========================
+                //   SWAGGER PUBLICO
+                // ===========================
+                .requestMatchers(
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html"
+                ).permitAll()
+
+                // ===========================
+                //   ENDPOINTS PUBLICOS
+                // ===========================
                 .requestMatchers("/auth/**").permitAll()
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Para las peticiones "preflight" de CORS
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // --- REGLAS PARA PRODUCTOS ---
-                .requestMatchers(HttpMethod.GET, "/productos", "/productos/**").hasAnyRole("AGRICULTOR", "COMPRADOR", "ADMINISTRADOR")
-                .requestMatchers(HttpMethod.POST, "/productos").hasRole("AGRICULTOR")
-                .requestMatchers(HttpMethod.PUT, "/productos/**").hasRole("AGRICULTOR")
-                .requestMatchers(HttpMethod.DELETE, "/productos/**").hasAnyRole("AGRICULTOR", "ADMINISTRADOR")
+                // ===========================
+                //   PRODUCTOS
+                // ===========================
+                .requestMatchers(HttpMethod.GET, "/productos/**")
+                .hasAnyRole("AGRICULTOR", "COMPRADOR", "ADMINISTRADOR")
 
-                // --- REGLAS PARA CULTIVOS (Ejemplo, ya las tienes en los controladores) ---
-                // No es necesario definirlas aquí si usas @PreAuthorize, pero lo mantenemos como ejemplo.
-                // .requestMatchers("/cultivos/**").hasRole("AGRICULTOR")
+                .requestMatchers(HttpMethod.POST, "/productos/**")
+                .hasRole("AGRICULTOR")
 
-                // --- REGLA FINAL: CUALQUIER OTRA PETICIÓN REQUIERE AUTENTICACIÓN ---
+                .requestMatchers(HttpMethod.PUT, "/productos/**")
+                .hasRole("AGRICULTOR")
+
+                .requestMatchers(HttpMethod.DELETE, "/productos/**")
+                .hasAnyRole("AGRICULTOR", "ADMINISTRADOR")
+
+                // ===========================
+                //   RESTO AUTENTICADO
+                // ===========================
                 .anyRequest().authenticated()
         );
 
-        // 4. Añadimos nuestro filtro JWT
+        // 4️ FILTRO JWT
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
 }
