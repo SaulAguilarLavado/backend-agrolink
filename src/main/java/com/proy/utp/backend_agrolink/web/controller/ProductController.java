@@ -24,6 +24,16 @@ public class ProductController {
     public ResponseEntity<List<Product>> getAll() {
         return new ResponseEntity<>(productService.getAll(), HttpStatus.OK);
     }
+    @GetMapping("/filtrar")
+    public List<Product> filterProducts(
+            @RequestParam(required=false) String nombre,
+            @RequestParam(required=false) String unidad,
+            @RequestParam(required=false) Double maxPrecio,
+            @RequestParam(required=false) Double minCantidad
+    ) {
+        return productService.filterProducts(nombre, unidad, maxPrecio, minCantidad);
+
+    }
 
     // --- NUEVO ENDPOINT ---
     /**

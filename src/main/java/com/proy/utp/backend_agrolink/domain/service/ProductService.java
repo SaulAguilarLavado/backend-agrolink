@@ -102,4 +102,15 @@ public class ProductService {
             return true;
         }).orElse(false);
     }
+    public List<Product> filterProducts(String nombre, String unidad, Double maxPrecio, Double minCantidad) {
+        List<Product> all = getAll(); // o como recuperas todos
+
+        return all.stream()
+                .filter(p -> nombre == null || p.getName().toLowerCase().contains(nombre.toLowerCase()))
+                .filter(p -> unidad == null || p.getUnitOfMeasure().equalsIgnoreCase(unidad))
+                .filter(p -> maxPrecio == null || p.getPricePerUnit().doubleValue() <= maxPrecio)
+                .filter(p -> minCantidad == null || p.getAvailableStock() >= minCantidad)
+                .toList();
+    }
+
 }
