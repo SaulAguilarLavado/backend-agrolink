@@ -7,6 +7,7 @@ import com.proy.utp.backend_agrolink.domain.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,6 +40,7 @@ public class CropService {
         User farmer = userRepository.findByEmail(farmerEmail)
                 .orElseThrow(() -> new RuntimeException("Agricultor no encontrado"));
         crop.setFarmer(farmer);
+        crop.setStatus("Activo");
         // Correcto: Llama a save en el repositorio
         return cropRepository.save(crop);
     }
@@ -49,5 +51,23 @@ public class CropService {
             cropRepository.deleteById(id);
             return true;
         }).orElse(false);
+    }
+    public Optional<Crop> updateStatus(Long id, String nuevoEstado, String emailAgricultor) {
+        return cropRepository.findById(id)
+                .map(crop -> {
+                    // Validar que el cultivo pertenezca al agricultor autenticado
+                    if (!crop.getFarmer().getEmail().equals(emailAgricultor)) {
+                        throw new RuntimeException("No tienes permiso para modificar este cultivo");
+                    }
+
+                    crop.setStatus(nuevoEstado);
+
+                    // ✅ Si el estado es “Cosechado”, ponemos la fecha actual
+                    if ("Cosechado".equalsIgnoreCase(nuevoEstado)) {
+                        crop.setHarvestDate(LocalDate.now());
+                    }
+
+                    return cropRepository.save(crop);
+                });
     }
 }

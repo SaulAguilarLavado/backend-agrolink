@@ -18,6 +18,8 @@ public interface CropMapper {
             @Mapping(source = "descripcion", target = "description"),
             @Mapping(source = "fechaSiembra", target = "plantingDate"),
             @Mapping(source = "areaCultivada", target = "cultivatedArea"),
+            @Mapping(source = "estado", target = "status"), // 🔹 nuevo
+            @Mapping(source = "fechaCosecha", target = "harvestDate"), // 🔹 nuevo
             @Mapping(source = "agricultor", target = "farmer") // Mapeo de objeto a objeto
     })
     Crop toCrop(Cultivo cultivo);
