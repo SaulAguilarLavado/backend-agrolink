@@ -114,4 +114,10 @@ public class OrderService {
 
         return orderMapper.toOrder(saved);
     }
+    public Order getOrderById(Long orderId) {
+        Pedido pedido = pedidoRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado: " + orderId));
+
+        return orderMapper.toOrder(pedido);
+    }
 }
