@@ -3,30 +3,33 @@ package com.proy.utp.backend_agrolink.domain.service;
 import com.proy.utp.backend_agrolink.domain.Order;
 import com.proy.utp.backend_agrolink.domain.dto.OrderItem;
 import com.proy.utp.backend_agrolink.domain.dto.OrderRequest;
-import com.proy.utp.backend_agrolink.persistance.crud.DetallePedidoCrudRepository;
 import com.proy.utp.backend_agrolink.persistance.crud.PedidoCrudRepository;
 import com.proy.utp.backend_agrolink.persistance.crud.ProductoCrudRepository;
+import com.proy.utp.backend_agrolink.persistance.crud.TransaccionCrudRepository; // <-- IMPORTAR DIRECTAMENTE
 import com.proy.utp.backend_agrolink.persistance.entity.DetallePedido;
 import com.proy.utp.backend_agrolink.persistance.entity.Pedido;
 import com.proy.utp.backend_agrolink.persistance.entity.Producto;
+import com.proy.utp.backend_agrolink.persistance.entity.Transaccion; // <-- IMPORTAR ENTIDAD
 import com.proy.utp.backend_agrolink.persistance.entity.Usuario;
 import com.proy.utp.backend_agrolink.persistance.mapper.OrderMapper;
 import com.proy.utp.backend_agrolink.persistance.mapper.UserMapper;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; // <-- IMPORTANTE
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set; // <-- IMPORTANTE
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
 
     private final PedidoCrudRepository pedidoRepository;
-    private final DetallePedidoCrudRepository detalleRepository;
     private final ProductoCrudRepository productoRepository;
+    private final TransaccionCrudRepository transaccionRepository; // Inyectamos el CRUD repo directamente
     private final OrderMapper orderMapper;
     private final UserMapper userMapper;
     private final AuthenticatedUserService authenticatedUserService;
@@ -36,15 +39,15 @@ public class OrderService {
 
     public OrderService(
             PedidoCrudRepository pedidoRepository,
-            DetallePedidoCrudRepository detalleRepository,
             ProductoCrudRepository productoRepository,
+            TransaccionCrudRepository transaccionRepository, // Se inyecta aquí
             OrderMapper orderMapper,
             UserMapper userMapper,
             AuthenticatedUserService authenticatedUserService
     ) {
         this.pedidoRepository = pedidoRepository;
-        this.detalleRepository = detalleRepository;
         this.productoRepository = productoRepository;
+        this.transaccionRepository = transaccionRepository; // Se asigna
         this.orderMapper = orderMapper;
         this.userMapper = userMapper;
         this.authenticatedUserService = authenticatedUserService;
@@ -73,7 +76,6 @@ public class OrderService {
             }
 
             producto.setStockDisponible(producto.getStockDisponible() - item.getQuantity());
-            // No es necesario guardar aquí, la transacción lo hará al final.
 
             DetallePedido det = new DetallePedido();
             det.setProducto(producto);
@@ -97,40 +99,64 @@ public class OrderService {
         return orderMapper.toOrder(pedido);
     }
 
-    // --- NUEVO MÉTODO PARA RF11 ---
+    // --- Lógica para RF11 ---
     public List<Order> getAllOrders() {
         return orderMapper.toOrders(pedidoRepository.findAll());
     }
 
-    // --- NUEVO MÉTODO PARA RF11 ---
+    // --- Lógica para RF11 y RF12 combinada ---
     @Transactional
     public Order updateOrderStatus(Long orderId, String newStatus) {
-        // 1. Validar que el estado sea uno de los permitidos
-        if (!VALID_STATUSES.contains(newStatus.toUpperCase())) {
+        String upperNewStatus = newStatus.toUpperCase();
+        if (!VALID_STATUSES.contains(upperNewStatus)) {
             throw new IllegalArgumentException("Estado de pedido no válido: " + newStatus);
         }
 
-        // 2. Encontrar el pedido
         Pedido pedido = pedidoRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado: " + orderId));
 
         String oldStatus = pedido.getEstado();
 
-        // 3. Lógica de negocio para RECHAZO (devolver stock)
-        if ("RECHAZADO".equalsIgnoreCase(newStatus) && !"RECHAZADO".equalsIgnoreCase(oldStatus)) {
+        // Lógica de rechazo (devolver stock)
+        if ("RECHAZADO".equals(upperNewStatus) && !"RECHAZADO".equalsIgnoreCase(oldStatus)) {
             for (DetallePedido detalle : pedido.getDetalles()) {
                 Producto producto = detalle.getProducto();
                 producto.setStockDisponible(producto.getStockDisponible() + detalle.getCantidad());
-                // No es necesario guardar producto por producto, la transacción se encarga
             }
         }
 
-        // Aquí podrías añadir lógica para otros estados, ej: enviar email al confirmar.
+        // Lógica para RF12: Crear transacción al confirmar
+        if ("CONFIRMADO".equals(upperNewStatus) && !"CONFIRMADO".equalsIgnoreCase(oldStatus)) {
+            createTransactionsForOrder(pedido);
+        }
 
-        // 4. Actualizar el estado y guardar
-        pedido.setEstado(newStatus.toUpperCase());
+        pedido.setEstado(upperNewStatus);
         Pedido updatedPedido = pedidoRepository.save(pedido);
 
         return orderMapper.toOrder(updatedPedido);
+    }
+
+    // --- Método privado para la lógica del RF12 ---
+    private void createTransactionsForOrder(Pedido pedido) {
+        Map<Usuario, List<DetallePedido>> detailsByFarmer = pedido.getDetalles().stream()
+                .collect(Collectors.groupingBy(detalle -> detalle.getProducto().getAgricultor()));
+
+        for (Map.Entry<Usuario, List<DetallePedido>> entry : detailsByFarmer.entrySet()) {
+            Usuario vendedor = entry.getKey();
+            List<DetallePedido> farmerDetails = entry.getValue();
+
+            BigDecimal subTotal = farmerDetails.stream()
+                    .map(detalle -> detalle.getPrecioUnitario().multiply(BigDecimal.valueOf(detalle.getCantidad())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            Transaccion transaccion = new Transaccion();
+            transaccion.setPedido(pedido);
+            transaccion.setVendedor(vendedor);
+            transaccion.setComprador(pedido.getComprador());
+            transaccion.setMontoTotal(subTotal);
+            transaccion.setFechaTransaccion(LocalDateTime.now());
+
+            transaccionRepository.save(transaccion);
+        }
     }
 }
