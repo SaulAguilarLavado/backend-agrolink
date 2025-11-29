@@ -2,14 +2,14 @@ package com.proy.utp.backend_agrolink.web.controller;
 
 import com.proy.utp.backend_agrolink.domain.Order;
 import com.proy.utp.backend_agrolink.domain.dto.OrderRequest;
-import com.proy.utp.backend_agrolink.domain.dto.UpdateOrderStatusRequest; // <-- IMPORTAR
+import com.proy.utp.backend_agrolink.domain.dto.UpdateOrderStatusRequest;
 import com.proy.utp.backend_agrolink.domain.service.OrderService;
-import org.springframework.http.HttpStatus; // <-- IMPORTAR
-import org.springframework.http.ResponseEntity; // <-- IMPORTAR
-import org.springframework.security.access.prepost.PreAuthorize; // <-- IMPORTAR
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List; // <-- IMPORTAR
+import java.util.List;
 
 @RestController
 @RequestMapping("/pedidos")
@@ -22,22 +22,19 @@ public class OrderController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('COMPRADOR')") // Solo los compradores pueden crear pedidos
+    @PreAuthorize("hasRole('COMPRADOR')")
     public ResponseEntity<Order> createOrder(@RequestBody OrderRequest request) {
         try {
             Order newOrder = orderService.createOrder(request);
             return new ResponseEntity<>(newOrder, HttpStatus.CREATED);
         } catch (RuntimeException e) {
-            // Manejar errores como producto no encontrado o stock insuficiente
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('COMPRADOR') or hasRole('ADMINISTRADOR')") // Comprador (si es suyo) o Admin
+    @PreAuthorize("hasRole('COMPRADOR') or hasRole('ADMINISTRADOR')")
     public ResponseEntity<Order> getOrder(@PathVariable Long id) {
-        // Aquí faltaría una validación para que el comprador solo vea sus propios pedidos.
-        // Por ahora, lo dejamos así para que el admin pueda verlo.
         try {
             return new ResponseEntity<>(orderService.getOrderById(id), HttpStatus.OK);
         } catch (RuntimeException e) {
@@ -45,7 +42,6 @@ public class OrderController {
         }
     }
 
-    // --- NUEVO ENDPOINT PARA RF11: Listar todos los pedidos ---
     @GetMapping
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<List<Order>> getAllOrders() {
@@ -53,7 +49,6 @@ public class OrderController {
         return new ResponseEntity<>(orders, HttpStatus.OK);
     }
 
-    // --- NUEVO ENDPOINT PARA RF11: Actualizar estado de un pedido ---
     @PatchMapping("/{id}/estado")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<Order> updateOrderStatus(
@@ -63,9 +58,17 @@ public class OrderController {
             Order updatedOrder = orderService.updateOrderStatus(id, request.getStatus());
             return new ResponseEntity<>(updatedOrder, HttpStatus.OK);
         } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // Si el estado no es válido
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         } catch (RuntimeException e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND); // Si el pedido no se encuentra
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+    }
+
+    // --- ENDPOINT PARA RF14: Historial de pedidos del comprador ---
+    @GetMapping("/my-orders")
+    @PreAuthorize("hasRole('COMPRADOR')")
+    public ResponseEntity<List<Order>> getMyOrders() {
+        List<Order> orders = orderService.getOrdersForAuthenticatedUser();
+        return ResponseEntity.ok(orders);
     }
 }

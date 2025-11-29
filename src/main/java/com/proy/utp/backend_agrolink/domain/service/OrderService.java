@@ -5,11 +5,11 @@ import com.proy.utp.backend_agrolink.domain.dto.OrderItem;
 import com.proy.utp.backend_agrolink.domain.dto.OrderRequest;
 import com.proy.utp.backend_agrolink.persistance.crud.PedidoCrudRepository;
 import com.proy.utp.backend_agrolink.persistance.crud.ProductoCrudRepository;
-import com.proy.utp.backend_agrolink.persistance.crud.TransaccionCrudRepository; // <-- IMPORTAR DIRECTAMENTE
+import com.proy.utp.backend_agrolink.persistance.crud.TransaccionCrudRepository;
 import com.proy.utp.backend_agrolink.persistance.entity.DetallePedido;
 import com.proy.utp.backend_agrolink.persistance.entity.Pedido;
 import com.proy.utp.backend_agrolink.persistance.entity.Producto;
-import com.proy.utp.backend_agrolink.persistance.entity.Transaccion; // <-- IMPORTAR ENTIDAD
+import com.proy.utp.backend_agrolink.persistance.entity.Transaccion;
 import com.proy.utp.backend_agrolink.persistance.entity.Usuario;
 import com.proy.utp.backend_agrolink.persistance.mapper.OrderMapper;
 import com.proy.utp.backend_agrolink.persistance.mapper.UserMapper;
@@ -29,25 +29,24 @@ public class OrderService {
 
     private final PedidoCrudRepository pedidoRepository;
     private final ProductoCrudRepository productoRepository;
-    private final TransaccionCrudRepository transaccionRepository; // Inyectamos el CRUD repo directamente
+    private final TransaccionCrudRepository transaccionRepository;
     private final OrderMapper orderMapper;
     private final UserMapper userMapper;
     private final AuthenticatedUserService authenticatedUserService;
 
-    // Estados de pedido válidos
     private static final Set<String> VALID_STATUSES = Set.of("PENDIENTE", "CONFIRMADO", "ENVIADO", "COMPLETADO", "RECHAZADO");
 
     public OrderService(
             PedidoCrudRepository pedidoRepository,
             ProductoCrudRepository productoRepository,
-            TransaccionCrudRepository transaccionRepository, // Se inyecta aquí
+            TransaccionCrudRepository transaccionRepository,
             OrderMapper orderMapper,
             UserMapper userMapper,
             AuthenticatedUserService authenticatedUserService
     ) {
         this.pedidoRepository = pedidoRepository;
         this.productoRepository = productoRepository;
-        this.transaccionRepository = transaccionRepository; // Se asigna
+        this.transaccionRepository = transaccionRepository;
         this.orderMapper = orderMapper;
         this.userMapper = userMapper;
         this.authenticatedUserService = authenticatedUserService;
@@ -99,12 +98,10 @@ public class OrderService {
         return orderMapper.toOrder(pedido);
     }
 
-    // --- Lógica para RF11 ---
     public List<Order> getAllOrders() {
         return orderMapper.toOrders(pedidoRepository.findAll());
     }
 
-    // --- Lógica para RF11 y RF12 combinada ---
     @Transactional
     public Order updateOrderStatus(Long orderId, String newStatus) {
         String upperNewStatus = newStatus.toUpperCase();
@@ -117,7 +114,6 @@ public class OrderService {
 
         String oldStatus = pedido.getEstado();
 
-        // Lógica de rechazo (devolver stock)
         if ("RECHAZADO".equals(upperNewStatus) && !"RECHAZADO".equalsIgnoreCase(oldStatus)) {
             for (DetallePedido detalle : pedido.getDetalles()) {
                 Producto producto = detalle.getProducto();
@@ -125,7 +121,6 @@ public class OrderService {
             }
         }
 
-        // Lógica para RF12: Crear transacción al confirmar
         if ("CONFIRMADO".equals(upperNewStatus) && !"CONFIRMADO".equalsIgnoreCase(oldStatus)) {
             createTransactionsForOrder(pedido);
         }
@@ -136,7 +131,6 @@ public class OrderService {
         return orderMapper.toOrder(updatedPedido);
     }
 
-    // --- Método privado para la lógica del RF12 ---
     private void createTransactionsForOrder(Pedido pedido) {
         Map<Usuario, List<DetallePedido>> detailsByFarmer = pedido.getDetalles().stream()
                 .collect(Collectors.groupingBy(detalle -> detalle.getProducto().getAgricultor()));
@@ -158,5 +152,15 @@ public class OrderService {
 
             transaccionRepository.save(transaccion);
         }
+    }
+
+    /**
+     * Obtiene todos los pedidos realizados por el usuario actualmente autenticado.
+     * @return Una lista de pedidos del comprador.
+     */
+    public List<Order> getOrdersForAuthenticatedUser() {
+        var buyerDomain = authenticatedUserService.getAuthenticatedUser();
+        List<Pedido> pedidos = pedidoRepository.findByCompradorId(buyerDomain.getUserId());
+        return orderMapper.toOrders(pedidos);
     }
 }
