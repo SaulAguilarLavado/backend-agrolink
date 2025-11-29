@@ -18,7 +18,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -49,11 +48,10 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        //  IMPORTANTE: PARA CORS CON CREDENTIALS
         configuration.setAllowedOriginPatterns(List.of("http://localhost:3000"));
 
-        //  Permitir métodos
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        //  Permitir todos los métodos necesarios, incluyendo PATCH
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
         // Permitir headers comunes del frontend
         configuration.setAllowedHeaders(List.of(
@@ -86,46 +84,33 @@ public class SecurityConfig {
         // 3️ Reglas de autorización
         http.authorizeHttpRequests(auth -> auth
 
-                // ===========================
-                //   SWAGGER PUBLICO
-                // ===========================
+                // Endpoints públicos (autenticación, Swagger, OPTIONS)
                 .requestMatchers(
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html"
                 ).permitAll()
-
-                // ===========================
-                //   ENDPOINTS PUBLICOS
-                // ===========================
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // ===========================
-                //   PRODUCTOS
-                // ===========================
-                .requestMatchers(HttpMethod.GET, "/productos/**")
-                .hasAnyRole("AGRICULTOR", "COMPRADOR", "ADMINISTRADOR")
+                // Reglas para Productos
+                .requestMatchers(HttpMethod.GET, "/productos/**").hasAnyRole("AGRICULTOR", "COMPRADOR", "ADMINISTRADOR")
+                .requestMatchers(HttpMethod.POST, "/productos/**").hasRole("AGRICULTOR")
+                .requestMatchers(HttpMethod.PUT, "/productos/**").hasRole("AGRICULTOR")
 
-                .requestMatchers(HttpMethod.POST, "/productos/**")
-                .hasRole("AGRICULTOR")
+                // --- ¡CORRECCIÓN AÑADIDA AQUÍ! ---
+                .requestMatchers(HttpMethod.PATCH, "/productos/**").hasRole("AGRICULTOR")
+                // ---------------------------------
 
-                .requestMatchers(HttpMethod.PUT, "/productos/**")
-                .hasRole("AGRICULTOR")
+                .requestMatchers(HttpMethod.DELETE, "/productos/**").hasAnyRole("AGRICULTOR", "ADMINISTRADOR")
 
-                .requestMatchers(HttpMethod.DELETE, "/productos/**")
-                .hasAnyRole("AGRICULTOR", "ADMINISTRADOR")
-
-                // ===========================
-                //   RESTO AUTENTICADO
-                // ===========================
+                // Resto de endpoints requieren autenticación (regla general al final)
                 .anyRequest().authenticated()
         );
 
-        // 4️ FILTRO JWT
+        // 4️ Añadir el filtro JWT antes del filtro de usuario/contraseña
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
-
 }

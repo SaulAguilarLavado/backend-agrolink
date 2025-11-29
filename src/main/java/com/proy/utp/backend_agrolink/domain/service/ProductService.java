@@ -2,13 +2,13 @@ package com.proy.utp.backend_agrolink.domain.service;
 
 import com.proy.utp.backend_agrolink.domain.Product;
 import com.proy.utp.backend_agrolink.domain.User;
-import com.proy.utp.backend_agrolink.domain.dto.ProductUpdateRequest; // <-- Nuevo import
+import com.proy.utp.backend_agrolink.domain.dto.ProductUpdateRequest;
 import com.proy.utp.backend_agrolink.domain.repository.ProductRepository;
 import com.proy.utp.backend_agrolink.domain.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,12 +25,6 @@ public class ProductService {
         return productRepository.getAll();
     }
 
-    // --- NUEVO MÉTODO ---
-    /**
-     * Obtiene todos los productos que pertenecen a un agricultor específico.
-     * @param farmerEmail El email del agricultor autenticado.
-     * @return Una lista de sus productos.
-     */
     public List<Product> getProductsByFarmer(String farmerEmail) {
         User farmer = userRepository.findByEmail(farmerEmail)
                 .orElseThrow(() -> new RuntimeException("Agricultor no encontrado"));
@@ -42,69 +36,70 @@ public class ProductService {
     }
 
     public Product saveForFarmer(Product product, String farmerEmail) {
-
-        // 1. Buscar al agricultor dueño
         User farmer = userRepository.findByEmail(farmerEmail)
                 .orElseThrow(() -> new RuntimeException("Agricultor no encontrado con email: " + farmerEmail));
 
-        // 2. Asociar agricultor
         product.setFarmer(farmer);
 
-        // 3. Validaciones mínimas
         if (product.getPricePerUnit() == null || product.getPricePerUnit().doubleValue() <= 0) {
             throw new IllegalArgumentException("El precio por unidad debe ser mayor a 0");
         }
-
-        if (product.getAvailableStock() <= 0) {
-            throw new IllegalArgumentException("El stock disponible debe ser mayor a 0");
+        if (product.getAvailableStock() < 0) {
+            throw new IllegalArgumentException("El stock disponible no puede ser negativo");
         }
 
-        // 4. Estado inicial del producto
-        product.setState("DISPONIBLE");   // en inglés porque tu dominio está en inglés
+        // --- ¡SOLUCIÓN AQUÍ! ---
+        // Asignamos un estado por defecto antes de guardar.
+        product.setState("DISPONIBLE");
+        // -------------------------
 
-        // 5. Fecha de publicación
-        product.setPublishDate(LocalDate.now());
-
-        // 6. Guardar
         return productRepository.save(product);
     }
 
-    // --- NUEVO MÉTODO PARA ACTUALIZAR ---
-    /**
-     * Actualiza un producto existente, validando que pertenezca al agricultor.
-     * @param productId El ID del producto a actualizar.
-     * @param request Los nuevos datos para el producto.
-     * @param farmerEmail El email del agricultor autenticado.
-     * @return El producto actualizado.
-     */
     public Optional<Product> updateProduct(Long productId, ProductUpdateRequest request, String farmerEmail) {
         return productRepository.findById(productId)
                 .map(product -> {
-                    // Validación de seguridad: el producto debe pertenecer al agricultor
                     if (!product.getFarmer().getEmail().equals(farmerEmail)) {
                         throw new SecurityException("No tienes permiso para modificar este producto.");
                     }
-
-                    // Actualizamos los campos
                     product.setName(request.getName());
                     product.setDescription(request.getDescription());
                     product.setPricePerUnit(request.getPricePerUnit());
                     product.setAvailableStock(request.getAvailableStock());
+                    return productRepository.save(product);
+                });
+    }
 
+    @Transactional // ¡Muy importante para operaciones de actualización!
+    public Optional<Product> adjustStock(Long productId, Double delta, String farmerEmail) {
+        return productRepository.findById(productId)
+                .map(product -> {
+                    // Validación de seguridad: el producto debe pertenecer al agricultor
+                    if (!product.getFarmer().getEmail().equals(farmerEmail)) {
+                        throw new SecurityException("No tienes permiso para modificar el stock de este producto.");
+                    }
+
+                    double newStock = product.getAvailableStock() + delta;
+
+                    // Validación de negocio: no permitir stock negativo
+                    if (newStock < 0) {
+                        throw new IllegalArgumentException("El stock no puede ser negativo. Stock actual: " + product.getAvailableStock());
+                    }
+
+                    product.setAvailableStock(newStock);
                     return productRepository.save(product);
                 });
     }
 
     public boolean delete(long productId) {
-        // Podríamos añadir una validación de seguridad aquí también antes de borrar
         return getProduct(productId).map(product -> {
             productRepository.deleteById(productId);
             return true;
         }).orElse(false);
     }
-    public List<Product> filterProducts(String nombre, String unidad, Double maxPrecio, Double minCantidad) {
-        List<Product> all = getAll(); // o como recuperas todos
 
+    public List<Product> filterProducts(String nombre, String unidad, Double maxPrecio, Double minCantidad) {
+        List<Product> all = getAll();
         return all.stream()
                 .filter(p -> nombre == null || p.getName().toLowerCase().contains(nombre.toLowerCase()))
                 .filter(p -> unidad == null || p.getUnitOfMeasure().equalsIgnoreCase(unidad))
@@ -112,5 +107,4 @@ public class ProductService {
                 .filter(p -> minCantidad == null || p.getAvailableStock() >= minCantidad)
                 .toList();
     }
-
 }
