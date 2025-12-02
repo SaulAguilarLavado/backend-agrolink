@@ -6,8 +6,10 @@ import java.util.List;
 import java.time.LocalDateTime;
 
 public interface TransaccionCrudRepository extends JpaRepository<Transaccion, Long> {
-    // Métodos para futuros reportes (RF13)
     List<Transaccion> findByVendedorId(Long vendedorId);
     List<Transaccion> findByCompradorId(Long compradorId);
     List<Transaccion> findByFechaTransaccionBetween(LocalDateTime start, LocalDateTime end);
+
+    // 🔥 AGREGAR ESTE MÉTODO
+    List<Transaccion> findByPedidoId(Long pedidoId);
 }

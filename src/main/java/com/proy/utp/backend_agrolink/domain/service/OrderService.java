@@ -132,8 +132,17 @@ public class OrderService {
             }
         }
 
-        if ("CONFIRMADO".equals(upperNewStatus) && !"CONFIRMADO".equalsIgnoreCase(oldStatus)) {
-            createTransactionsForOrder(pedido);
+        // 🔥 MODIFICACIÓN AQUÍ: Crear transacciones tanto en CONFIRMADO como en COMPLETADO
+        if (("CONFIRMADO".equals(upperNewStatus) || "COMPLETADO".equals(upperNewStatus))
+                && !upperNewStatus.equalsIgnoreCase(oldStatus)) {
+
+            // Verificar si ya existen transacciones para este pedido
+            List<Transaccion> existingTransactions = transaccionRepository.findByPedidoId(pedido.getId());
+
+            // Solo crear si no existen transacciones previas
+            if (existingTransactions.isEmpty()) {
+                createTransactionsForOrder(pedido);
+            }
         }
 
         pedido.setEstado(upperNewStatus);
