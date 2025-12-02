@@ -8,7 +8,9 @@ import com.proy.utp.backend_agrolink.persistance.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Repository
 public class UsuarioRepository implements UserRepository {
@@ -34,5 +36,12 @@ public class UsuarioRepository implements UserRepository {
     @Override
     public boolean existsByEmail(String email) {
         return usuarioCrudRepository.existsByEmail(email);
+    }
+
+    @Override
+    public List<User> findAll() {
+        return usuarioCrudRepository.findAll().stream()
+                .map(mapper::toUser)
+                .collect(Collectors.toList());
     }
 }

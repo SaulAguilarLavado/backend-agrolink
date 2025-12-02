@@ -41,6 +41,9 @@ public class Producto {
     @Column(name="fecha_publicacion")
     private LocalDate fechaPublicacion;
 
+    @Column(name = "imagen_url", length = 512)
+    private String imagenUrl;
+
     // Getters y Setters
 
     public Long getId() {
@@ -117,5 +120,13 @@ public class Producto {
     }
 
     public void setEstado(String estado) { this.estado = estado;
+    }
+
+    public String getImagenUrl() {
+        return imagenUrl;
+    }
+
+    public void setImagenUrl(String imagenUrl) {
+        this.imagenUrl = imagenUrl;
     }
 }

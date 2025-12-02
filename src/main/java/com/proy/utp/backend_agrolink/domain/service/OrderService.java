@@ -3,14 +3,11 @@ package com.proy.utp.backend_agrolink.domain.service;
 import com.proy.utp.backend_agrolink.domain.Order;
 import com.proy.utp.backend_agrolink.domain.dto.OrderItem;
 import com.proy.utp.backend_agrolink.domain.dto.OrderRequest;
+import com.proy.utp.backend_agrolink.persistance.crud.NotificacionCrudRepository;
 import com.proy.utp.backend_agrolink.persistance.crud.PedidoCrudRepository;
 import com.proy.utp.backend_agrolink.persistance.crud.ProductoCrudRepository;
 import com.proy.utp.backend_agrolink.persistance.crud.TransaccionCrudRepository;
-import com.proy.utp.backend_agrolink.persistance.entity.DetallePedido;
-import com.proy.utp.backend_agrolink.persistance.entity.Pedido;
-import com.proy.utp.backend_agrolink.persistance.entity.Producto;
-import com.proy.utp.backend_agrolink.persistance.entity.Transaccion;
-import com.proy.utp.backend_agrolink.persistance.entity.Usuario;
+import com.proy.utp.backend_agrolink.persistance.entity.*;
 import com.proy.utp.backend_agrolink.persistance.mapper.OrderMapper;
 import com.proy.utp.backend_agrolink.persistance.mapper.UserMapper;
 import org.springframework.stereotype.Service;
@@ -33,6 +30,8 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final UserMapper userMapper;
     private final AuthenticatedUserService authenticatedUserService;
+    private final NotificacionCrudRepository notificacionRepository;
+    private final NotificationService notificationService;
 
     private static final Set<String> VALID_STATUSES = Set.of("PENDIENTE", "CONFIRMADO", "ENVIADO", "COMPLETADO", "RECHAZADO");
 
@@ -42,7 +41,9 @@ public class OrderService {
             TransaccionCrudRepository transaccionRepository,
             OrderMapper orderMapper,
             UserMapper userMapper,
-            AuthenticatedUserService authenticatedUserService
+            AuthenticatedUserService authenticatedUserService,
+            NotificacionCrudRepository notificacionRepository,
+            NotificationService notificationService
     ) {
         this.pedidoRepository = pedidoRepository;
         this.productoRepository = productoRepository;
@@ -50,6 +51,8 @@ public class OrderService {
         this.orderMapper = orderMapper;
         this.userMapper = userMapper;
         this.authenticatedUserService = authenticatedUserService;
+        this.notificacionRepository = notificacionRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -89,6 +92,14 @@ public class OrderService {
         pedido.setDetalles(detalleEntities);
 
         Pedido saved = pedidoRepository.save(pedido);
+
+        // Notificar a todos los administradores sobre el nuevo pedido
+        notificationService.notifyAdmins(
+                "Nuevo pedido #" + saved.getId() + " pendiente de " +
+                        buyerDomain.getName() + " " + buyerDomain.getLastname() +
+                        " por un total de $" + total.setScale(2)
+        );
+
         return orderMapper.toOrder(saved);
     }
 
@@ -128,6 +139,14 @@ public class OrderService {
         pedido.setEstado(upperNewStatus);
         Pedido updatedPedido = pedidoRepository.save(pedido);
 
+        // Notificar al comprador sobre el cambio de estado
+        notifyBuyerAboutStatusChange(updatedPedido, upperNewStatus);
+
+        // Si el pedido se completó, notificar a los agricultores
+        if ("COMPLETADO".equals(upperNewStatus)) {
+            notifyFarmersAboutCompletedOrder(updatedPedido);
+        }
+
         return orderMapper.toOrder(updatedPedido);
     }
 
@@ -151,6 +170,11 @@ public class OrderService {
             transaccion.setFechaTransaccion(LocalDateTime.now());
 
             transaccionRepository.save(transaccion);
+
+            Notificacion notif = new Notificacion();
+            notif.setUsuario(vendedor);
+            notif.setMensaje("Has recibido un nuevo pedido (#" + pedido.getId() + ") por un monto de $" + subTotal.setScale(2));
+            notificacionRepository.save(notif);
         }
     }
 
@@ -162,5 +186,59 @@ public class OrderService {
         var buyerDomain = authenticatedUserService.getAuthenticatedUser();
         List<Pedido> pedidos = pedidoRepository.findByCompradorId(buyerDomain.getUserId());
         return orderMapper.toOrders(pedidos);
+    }
+
+    /**
+     * Notifica al comprador sobre el cambio de estado del pedido
+     */
+    private void notifyBuyerAboutStatusChange(Pedido pedido, String newStatus) {
+        String mensaje;
+        switch (newStatus) {
+            case "CONFIRMADO":
+                mensaje = "Tu pedido #" + pedido.getId() + " ha sido confirmado y está siendo procesado.";
+                break;
+            case "ENVIADO":
+                mensaje = "Tu pedido #" + pedido.getId() + " ha sido enviado y está en camino.";
+                break;
+            case "COMPLETADO":
+                mensaje = "Tu pedido #" + pedido.getId() + " ha sido completado exitosamente.";
+                break;
+            case "RECHAZADO":
+                mensaje = "Tu pedido #" + pedido.getId() + " ha sido rechazado. Contacta con soporte para más información.";
+                break;
+            default:
+                mensaje = "El estado de tu pedido #" + pedido.getId() + " ha cambiado a: " + newStatus;
+        }
+
+        notificationService.createNotification(pedido.getComprador(), mensaje);
+    }
+
+    /**
+     * Notifica a los agricultores cuando se completa un pedido que incluye sus productos
+     */
+    private void notifyFarmersAboutCompletedOrder(Pedido pedido) {
+        Map<Usuario, List<DetallePedido>> detailsByFarmer = pedido.getDetalles().stream()
+                .collect(Collectors.groupingBy(detalle -> detalle.getProducto().getAgricultor()));
+
+        for (Map.Entry<Usuario, List<DetallePedido>> entry : detailsByFarmer.entrySet()) {
+            Usuario agricultor = entry.getKey();
+            List<DetallePedido> detalles = entry.getValue();
+
+            StringBuilder productos = new StringBuilder();
+            for (int i = 0; i < detalles.size(); i++) {
+                DetallePedido det = detalles.get(i);
+                productos.append(det.getProducto().getNombre())
+                        .append(" (x").append(det.getCantidad()).append(")");
+                if (i < detalles.size() - 1) {
+                    productos.append(", ");
+                }
+            }
+
+            String mensaje = "El pedido #" + pedido.getId() + " que incluye tus productos: " +
+                    productos.toString() + " ha sido completado por " +
+                    pedido.getComprador().getNombre() + " " + pedido.getComprador().getApellido();
+
+            notificationService.createNotification(agricultor, mensaje);
+        }
     }
 }

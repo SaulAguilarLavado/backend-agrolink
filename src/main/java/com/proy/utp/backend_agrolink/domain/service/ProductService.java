@@ -98,6 +98,19 @@ public class ProductService {
         }).orElse(false);
     }
 
+    @Transactional
+    public Product updateProductImage(Long productId, String imageUrl, String farmerEmail) {
+        return productRepository.findById(productId)
+                .map(product -> {
+                    if (!product.getFarmer().getEmail().equals(farmerEmail)) {
+                        throw new SecurityException("No tienes permiso para modificar este producto.");
+                    }
+                    product.setImageUrl(imageUrl);
+                    return product; // La transacción se encarga de guardar
+                })
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + productId));
+    }
+
     public List<Product> filterProducts(String nombre, String unidad, Double maxPrecio, Double minCantidad, String tipoCultivo) {
         // Punto de partida: si se especifica tipoCultivo real (nombre de cultivo), consultamos por relación
         List<Product> all;

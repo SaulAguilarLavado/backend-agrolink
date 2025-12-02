@@ -3,6 +3,7 @@ package com.proy.utp.backend_agrolink.web.controller;
 import com.proy.utp.backend_agrolink.domain.Product;
 import com.proy.utp.backend_agrolink.domain.dto.ProductUpdateRequest;
 import com.proy.utp.backend_agrolink.domain.dto.StockAdjustmentRequest;
+import com.proy.utp.backend_agrolink.domain.service.FileStorageService;
 import com.proy.utp.backend_agrolink.domain.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -10,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -19,6 +21,9 @@ public class ProductController {
 
     @Autowired
     private ProductService productService;
+
+    @Autowired
+    private FileStorageService fileStorageService;
 
     // Endpoint para que todos los roles vean la lista completa de productos
     @GetMapping
@@ -111,5 +116,23 @@ public class ProductController {
             // Este error se lanza si se intenta dejar el stock en negativo
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
+    }
+
+    @PostMapping("/{id}/imagen")
+    @PreAuthorize("hasRole('AGRICULTOR')")
+    public ResponseEntity<Product> uploadProductImage(
+            @PathVariable("id") Long productId,
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
+
+        String farmerEmail = authentication.getName();
+
+        // 1. Guardar el archivo en el servidor y obtener la URL completa
+        String fileUrl = fileStorageService.storeFile(file);
+
+        // 2. Actualizar el producto en la base de datos con la nueva URL
+        Product updatedProduct = productService.updateProductImage(productId, fileUrl, farmerEmail);
+
+        return ResponseEntity.ok(updatedProduct);
     }
 }
