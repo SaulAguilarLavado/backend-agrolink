@@ -22,7 +22,8 @@ public interface ProductMapper {
             @Mapping(source = "agricultor", target = "farmer"),
             @Mapping(source = "cosecha.id", target = "harvestId"),
             @Mapping(source = "estado", target = "state"),
-            @Mapping(source = "fechaPublicacion", target = "publishDate")// Mapeamos solo el ID de la cosecha
+            @Mapping(source = "fechaPublicacion", target = "publishDate"),// Mapeamos solo el ID de la cosecha
+            @Mapping(source = "imagenUrl", target = "imageUrl")
     })
     Product toProduct(Producto producto);
 

@@ -14,6 +14,7 @@ public class Product {
     private Long harvestId; // Opcional, puede ser nulo
     private String state;
     private LocalDate publishDate;
+    private String imageUrl;
 
     public Long getProductId() {
         return productId;
@@ -94,4 +95,8 @@ public class Product {
     public void setPublishDate(LocalDate publishDate) {
         this.publishDate = publishDate;
     }
+
+    public String getImageUrl() { return imageUrl; }
+
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 }

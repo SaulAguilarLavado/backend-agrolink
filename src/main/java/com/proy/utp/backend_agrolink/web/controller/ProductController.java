@@ -1,14 +1,17 @@
 package com.proy.utp.backend_agrolink.web.controller;
 
 import com.proy.utp.backend_agrolink.domain.Product;
-import com.proy.utp.backend_agrolink.domain.dto.ProductUpdateRequest; // <-- Nuevo import
+import com.proy.utp.backend_agrolink.domain.dto.ProductUpdateRequest;
+import com.proy.utp.backend_agrolink.domain.dto.StockAdjustmentRequest;
+import com.proy.utp.backend_agrolink.domain.service.FileStorageService;
 import com.proy.utp.backend_agrolink.domain.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize; // <-- Importante
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -19,26 +22,28 @@ public class ProductController {
     @Autowired
     private ProductService productService;
 
-    // Este endpoint permite a todos los roles ver la lista completa de productos
+    @Autowired
+    private FileStorageService fileStorageService;
+
+    // Endpoint para que todos los roles vean la lista completa de productos
     @GetMapping
     public ResponseEntity<List<Product>> getAll() {
         return new ResponseEntity<>(productService.getAll(), HttpStatus.OK);
     }
+
+    // Endpoint para filtrar productos
     @GetMapping("/filtrar")
     public List<Product> filterProducts(
             @RequestParam(required=false) String nombre,
             @RequestParam(required=false) String unidad,
             @RequestParam(required=false) Double maxPrecio,
-            @RequestParam(required=false) Double minCantidad
+            @RequestParam(required=false) Double minCantidad,
+            @RequestParam(required=false, name = "tipoCultivo") String tipoCultivo
     ) {
-        return productService.filterProducts(nombre, unidad, maxPrecio, minCantidad);
-
+        return productService.filterProducts(nombre, unidad, maxPrecio, minCantidad, tipoCultivo);
     }
 
-    // --- NUEVO ENDPOINT ---
-    /**
-     * Endpoint para que un agricultor vea su propio inventario.
-     */
+    // Endpoint para que un agricultor vea su propio inventario
     @GetMapping("/mi-inventario")
     @PreAuthorize("hasRole('AGRICULTOR')")
     public ResponseEntity<List<Product>> getMyInventory(Authentication authentication) {
@@ -46,7 +51,7 @@ public class ProductController {
         return ResponseEntity.ok(productService.getProductsByFarmer(farmerEmail));
     }
 
-    // Este endpoint permite a cualquier rol autenticado ver un producto específico
+    // Endpoint para ver un producto específico por su ID
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProduct(@PathVariable("id") long productId) {
         return productService.getProduct(productId)
@@ -54,7 +59,7 @@ public class ProductController {
                 .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    // Se mantiene igual, pero añadimos seguridad
+    // Endpoint para que un agricultor cree un nuevo producto
     @PostMapping
     @PreAuthorize("hasRole('AGRICULTOR')")
     public ResponseEntity<Product> save(@RequestBody Product product, Authentication authentication) {
@@ -63,7 +68,7 @@ public class ProductController {
         return new ResponseEntity<>(savedProduct, HttpStatus.CREATED);
     }
 
-    // --- NUEVO ENDPOINT PARA ACTUALIZAR ---
+    // Endpoint para que un agricultor actualice un producto existente
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('AGRICULTOR')")
     public ResponseEntity<Product> update(
@@ -81,16 +86,53 @@ public class ProductController {
         }
     }
 
-    // Se mantiene igual, pero añadimos seguridad
+    // Endpoint para que un agricultor elimine un producto
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('AGRICULTOR')")
     public ResponseEntity<Void> delete(@PathVariable("id") long productId) {
-        // Es una buena práctica validar que el producto pertenece al agricultor antes de borrar,
-        // esto se puede añadir en el service.
         if (productService.delete(productId)) {
             return new ResponseEntity<>(HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+    }
+
+    // --- ENDPOINT PARA AJUSTAR STOCK (EL QUE FALTABA) ---
+    @PatchMapping("/{id}/stock")
+    @PreAuthorize("hasRole('AGRICULTOR')")
+    public ResponseEntity<Product> adjustStock(
+            @PathVariable("id") Long productId,
+            @RequestBody StockAdjustmentRequest request,
+            Authentication authentication) {
+
+        String farmerEmail = authentication.getName();
+        try {
+            return productService.adjustStock(productId, request.getDelta(), farmerEmail)
+                    .map(ResponseEntity::ok)
+                    .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        } catch (SecurityException e) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        } catch (IllegalArgumentException e) {
+            // Este error se lanza si se intenta dejar el stock en negativo
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PostMapping("/{id}/imagen")
+    @PreAuthorize("hasRole('AGRICULTOR')")
+    public ResponseEntity<Product> uploadProductImage(
+            @PathVariable("id") Long productId,
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
+
+        String farmerEmail = authentication.getName();
+
+        // 1. Guardar el archivo en el servidor y obtener la URL completa
+        String fileUrl = fileStorageService.storeFile(file);
+
+        // 2. Actualizar el producto en la base de datos con la nueva URL
+        Product updatedProduct = productService.updateProductImage(productId, fileUrl, farmerEmail);
+
+        return ResponseEntity.ok(updatedProduct);
     }
 }
