@@ -36,6 +36,11 @@ public class ProductoRepository implements ProductRepository {
     }
 
     @Override
+    public List<Product> findByCropNameLike(String cropName) {
+        return mapper.toProducts(productoCrudRepository.findByCosechaCultivoNombreContainingIgnoreCase(cropName));
+    }
+
+    @Override
     public Product save(Product product) {
         Producto productoEntity = mapper.toProducto(product);
         return mapper.toProduct(productoCrudRepository.save(productoEntity));

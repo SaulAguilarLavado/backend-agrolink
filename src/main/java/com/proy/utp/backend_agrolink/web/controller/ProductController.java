@@ -32,9 +32,10 @@ public class ProductController {
             @RequestParam(required=false) String nombre,
             @RequestParam(required=false) String unidad,
             @RequestParam(required=false) Double maxPrecio,
-            @RequestParam(required=false) Double minCantidad
+            @RequestParam(required=false) Double minCantidad,
+            @RequestParam(required=false, name = "tipoCultivo") String tipoCultivo
     ) {
-        return productService.filterProducts(nombre, unidad, maxPrecio, minCantidad);
+        return productService.filterProducts(nombre, unidad, maxPrecio, minCantidad, tipoCultivo);
     }
 
     // Endpoint para que un agricultor vea su propio inventario

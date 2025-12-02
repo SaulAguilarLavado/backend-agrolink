@@ -7,4 +7,7 @@ import java.util.List;
 public interface ProductoCrudRepository extends JpaRepository<Producto, Long> {
     // Spring Data crea automáticamente la consulta a partir del nombre del método
     List<Producto> findByAgricultorId(Long agricultorId);
+
+    // Buscar por nombre de cultivo asociado (cosecha -> cultivo -> nombre)
+    List<Producto> findByCosechaCultivoNombreContainingIgnoreCase(String nombre);
 }

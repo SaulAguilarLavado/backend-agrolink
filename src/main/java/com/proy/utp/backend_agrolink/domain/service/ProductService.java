@@ -98,8 +98,14 @@ public class ProductService {
         }).orElse(false);
     }
 
-    public List<Product> filterProducts(String nombre, String unidad, Double maxPrecio, Double minCantidad) {
-        List<Product> all = getAll();
+    public List<Product> filterProducts(String nombre, String unidad, Double maxPrecio, Double minCantidad, String tipoCultivo) {
+        // Punto de partida: si se especifica tipoCultivo real (nombre de cultivo), consultamos por relación
+        List<Product> all;
+        if (tipoCultivo != null && !tipoCultivo.trim().isEmpty()) {
+            all = productRepository.findByCropNameLike(tipoCultivo.trim());
+        } else {
+            all = getAll();
+        }
         return all.stream()
                 .filter(p -> nombre == null || p.getName().toLowerCase().contains(nombre.toLowerCase()))
                 .filter(p -> unidad == null || p.getUnitOfMeasure().equalsIgnoreCase(unidad))

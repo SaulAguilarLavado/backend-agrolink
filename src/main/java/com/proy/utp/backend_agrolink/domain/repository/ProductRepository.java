@@ -14,6 +14,9 @@ public interface ProductRepository {
     // Este método es nuevo y lo necesitarás, así que lo añadimos.
     List<Product> findByFarmerId(long farmerId);
 
+    // Buscar productos por nombre de cultivo asociado (vía cosecha -> cultivo.nombre)
+    List<Product> findByCropNameLike(String cropName);
+
     Product save(Product product);
 
     // Unificamos el nombre a deleteById, que es más explícito y estándar.
